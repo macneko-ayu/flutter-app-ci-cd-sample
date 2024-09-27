@@ -1,0 +1,70 @@
+name: check-pr
+
+on:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+
+    timeout-minutes: 10
+
+    steps:
+      # https://github.com/actions/checkout
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # https://github.com/kuhnroyal/flutter-fvm-config-action
+      - name: Fetch flutter config
+        uses: kuhnroyal/flutter-fvm-config-action@60c14af316b09f8819202d845391260cf3b979c9 # v3.0.0
+        id: fvm-config-action
+
+      # https://github.com/subosito/flutter-action
+      - name: Setup flutter
+        uses: subosito/flutter-action@44ac965b96f18d999802d4b807e3256d5a3f9fa1 # v2.16.0
+        with:
+          flutter-version: ${{ steps.fvm-config-action.outputs.FLUTTER_VERSION }}
+          channel: ${{ steps.fvm-config-action.outputs.FLUTTER_CHANNEL }}
+          cache: true
+          cache-key: ${{ steps.fvm-config-action.outputs.FLUTTER_VERSION }}-${{ steps.fvm-config-action.outputs.FLUTTER_CHANNEL }}
+          pub-cache-key: "flutter-pub:os:-:channel:-:version:-:arch:-:hash:"
+
+      # https://github.com/actions/cache
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.packages
+            ${{ github.workspace }}/.flutter-plugins
+            ${{ github.workspace }}/.flutter-plugin-dependencies
+            ${{ github.workspace }}/.dart_tool/package_config.json
+          key: build-pubspec-${{ hashFiles(format('{0}{1}', github.workspace, '/pubspec.lock')) }}
+          restore-keys: |
+            build-pubspec-
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # TODO: Linter は別 PR で対応する
+      #   # https://github.com/invertase/github-action-dart-analyzer
+      # - name: Report analyze
+      #   uses: invertase/github-action-dart-analyzer@v1
+      #   with:
+      #     fatal-infos: true
+
+      - name: Run test
+        run: flutter test --no-pub --machine > test_report.log
+        continue-on-error: true
+
+      # https://github.com/dorny/test-reporter
+      - name: Report test
+        uses: dorny/test-reporter@31a54ee7ebcacc03a09ea97a7e5465a47b84aea5 # v1.9.1
+        with:
+          name: 'flutter test'
+          path: 'test_report.log'
+          reporter: 'flutter-json'
+          fail-on-error: 'true'
+      
+
