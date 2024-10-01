@@ -47,12 +47,12 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # TODO: Linter は別 PR で対応する
-      #   # https://github.com/invertase/github-action-dart-analyzer
-      # - name: Report analyze
-      #   uses: invertase/github-action-dart-analyzer@v1
-      #   with:
-      #     fatal-infos: true
+      # https://github.com/invertase/github-action-dart-analyzer
+      - name: Report analyze
+        uses: invertase/github-action-dart-analyzer@e981b01a458d0bab71ee5da182e5b26687b7101b # v3.0.0
+        with:
+          fatal-infos: true
+          # custom-lint: true # Riverpod 導入時は採用してもいいかも
 
       - name: Run test
         run: flutter test --no-pub --machine > test_report.log
